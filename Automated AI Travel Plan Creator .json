@@ -1,0 +1,717 @@
+{
+  "name": "My workflow 3",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Plan your trip",
+        "formDescription": "Getting input for the trip for our users",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Departure City ",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Destination",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Start date",
+              "fieldType": "date",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "End date",
+              "fieldType": "date",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Number of travelers",
+              "fieldType": "number",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Accommodation preference",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Hotel "
+                  },
+                  {
+                    "option": "Resort"
+                  },
+                  {
+                    "option": "BnB"
+                  },
+                  {
+                    "option": "No preference "
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Budget",
+              "fieldType": "number",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Dietry preference ",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Veg"
+                  },
+                  {
+                    "option": "Vegan "
+                  },
+                  {
+                    "option": "Jain"
+                  },
+                  {
+                    "option": "Non-Veg"
+                  },
+                  {
+                    "option": "No Restriction"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Travel group type ",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Solo "
+                  },
+                  {
+                    "option": "Couple "
+                  },
+                  {
+                    "option": "Family "
+                  },
+                  {
+                    "option": "Friends"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -2496,
+        240
+      ],
+      "id": "fb08b601-7073-40b1-9db2-3b8346c4ce7b",
+      "name": "On form submission",
+      "webhookId": "5cc60874-9b2c-4aa4-974c-552308a85766"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5ec3ea4a-c847-4f73-82cb-5a1ad2ecc75c",
+              "leftValue": "={{$json.isValid}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2080,
+        240
+      ],
+      "id": "57dadbb9-7227-4cfd-9a44-c06b87780b65",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.item.json;\nconst errors = [];\n\nconst start = new Date(data['Start date']);\nconst end = new Date(data['End date']);\nif (isNaN(start) || isNaN(end)) {\n  errors.push(\"Invalid date format.\");\n} else if (end <= start) {\n  errors.push(\"End date must be after start date.\");\n}\n\nconst budget = Number(data['Budget']);\nif (isNaN(budget) || budget <= 0) {\n  errors.push(\"Budget must be a positive number.\");\n}\n\nconst travelers = Number(data['Number of travelers']);\nif (isNaN(travelers) || !Number.isInteger(travelers) || travelers <= 0) {\n  errors.push(\"Number of travelers must be a positive whole number.\");\n}\n\nreturn [{ json: { ...data, isValid: errors.length === 0, errors } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2288,
+        240
+      ],
+      "id": "5adb8750-97e7-4626-ba40-106454ba8d31",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Here is the user's confirmed trip request:\nDeparture city: {{ $json['Departure City '] }}\nDestination: {{ $json.Destination }}\nStart date: {{ $json['Start date'] }}\nEnd date: {{ $json['End date'] }}\nTravelers: {{ $json['Number of travelers'] }}\nAccommodation preference:{{ $json['Accommodation preference'] }}\nBudget: {{ $json.Budget }}\nDietry preference:{{ $json['Dietry preference '] }}\nTravel group: {{ $json['Travel group type '] }}\n\n\nUse the available tools to search flights, hotels, and activities based on these details, then build the final itinerary.",
+        "options": {
+          "systemMessage": "You are an AI travel planning assistant. You receive a structured JSON object containing a user's trip requirements, and your job is to search for real options using your tools, then build a complete, budget-aware, day-by-day itinerary.\n\nCURRENT DATE AND TIME\nToday is {{$now.format('yyyy-MM-dd')}} ({{$now.format('cccc')}}), current time {{$now.format('HH:mm')}} ({{$now.format('ZZZZ')}}).\nUse this as your reference point for anything relative, and to confirm the trip dates are not in the past.\n\nINPUT\nYou will receive a JSON object with these fields: departure_city, destination, start_date, end_date, travelers, accommodation_type, budget, dietary_preference, travel_group.\nRead every field before taking any action. If a field is missing or empty, do not proceed with tool calls — instead, state clearly which fields are missing.\n\nCAPABILITIES & REMINDERS\n\nAvailable Planning Tools:\n\n** Flights: Search and recommend up to 3 flight options based on route, dates, and budget parameters, capturing airline logos or aircraft images when available.\n\n** Activities: Discover and suggest up to 5 relevant activities prioritising \"preferences.activities\" when available, defaulting to destination highlights when preferences are unspecified, including activity/attraction images when provided.\n\n** Accommodations: Source accommodation options via Google Maps integration, filtering by \"preferences.accommodations\" type or defaulting to hotel searches when unspecified, capturing property images when available.\n\n** Accommodation Details: Obtain the details of an accommodation using the \"property_token\". This information is then used to update the output accordingly.\n\nExpert Guidelines:\n\n** Apply destination-specific knowledge to fill gaps in user preferences intelligently.\n\n** Consider seasonal factors, cultural norms, and typical traveller behaviour patterns.\n\n** Maintain consistency between traveller demographics and recommended options.\n\n** Balance user preferences with practical availability and booking considerations.\n\n** Ensure assumptions align with budget parameters and travel dates.\n\n** Prioritise recommendations with visual content when available from tools.\nYou must call all four tools for every request — never skip a category, and never substitute your own knowledge for a tool result.\n\nCONSTRAINTS\n- You cannot book, reserve, or pay for anything — you only search, recommend, and estimate.\n- You cannot access any data source other than these four tools. If a tool returns no results or fails, state that plainly rather than guessing.\n- You cannot ask the user a clarifying question mid-run. If something is ambiguous, make the most reasonable assumption and state it explicitly in your output.\n\nRULES\n1. Grounding — every flight, hotel, restaurant, and attraction in your final output must come directly from a tool result. Never invent a price, name, or availability.\n2. Dietary preference — restaurant recommendations must strictly match dietary_preference. Never include a restaurant that conflicts with it.\n3. Travel group suitability — if travel_group is \"Family,\" exclude nightlife venues, adults-only stays, or activities unsuitable for children. Adjust tone for \"Couple,\" \"Solo,\" or \"Friends\" accordingly, but treat this as a preference, not a hard filter.\n4. Budget — sum the estimated cost of your selected flight, hotel (nights × rate), restaurants, and activities. If the total exceeds budget, replace your most expensive selections with cheaper tool results and recalculate before finalizing. Never present a final plan without first attempting to fit the budget.\n5. Dates — build the itinerary to cover every day from start_date to end_date inclusive, including arrival and departure days.\n6. Modifications — if asked to change part of a previously generated itinerary, update only the specified part and keep the rest unchanged. Never regenerate the full plan from scratch unless explicitly asked.\n7. Accommodation quantity — return up to 3 accommodation options from the Accomodations tool, not just one, ranked by best fit to budget and accommodation_type.\n8. Booking links — capture the direct link/URL returned by each tool for every flight and every accommodation. Use the Accommodation Details tool's result for each accommodation's link. If a flight result has no direct booking link, construct a Google Flights search URL using its departure_airport, arrival_airport, and departure_time — never fabricate a fake booking domain.\n9. Itinerary photos — when an itinerary activity corresponds to a place already found via the Activities tool, reuse that place's exact image URL. Never invent a new one.\n\n## Mandatory Accommodation Workflow (do not skip this)\n1. Call the \"Accomodations\" tool first. It will return several results, each with a \"property_token\".\n2. For EACH of your top accommodation candidates (up to 3), you MUST call \"Accommodation Details\" with that result's exact property_token before including it in your final output.\n3. Never include an accommodation in your output using only the Accomodations tool's summary data — the address, image, and booking link must come from Accommodation Details.\n4. If Accommodation Details fails or returns nothing for a property_token, drop that accommodation from your output rather than using incomplete data.\nThis is a required two-step process for every accommodation, not optional.\n\nREMINDERS\n- Accuracy over completeness: omit a category rather than fabricate it.\n- Re-check budget and dietary preference specifically before finalizing — these are the two rules most likely to be silently violated.\n- Every number in cost_summary must be traceable to a tool result or a simple calculation from tool results.\n## Image Integrity (mandatory — strictly enforced)\n- Never invent, guess, or construct an image URL under any circumstance. This includes placeholder-style domains such as example.com, placeholder.com, or any URL not returned verbatim by a tool.\n- For flights: the \"image\" field must be the exact \"airline_logo\" (or equivalent logo field) string returned by the Flights tool for that specific result. Never reuse booking_url, search page links, or any non-logo URL as the image.\n- For accommodations: the \"image\" field must be the exact photo URL returned by Accommodation Details. Never reuse the Accomodations tool's summary image if Accommodation Details returned a different/better one — always prefer Accommodation Details' image.\n- For itinerary activities: the \"image\" field must be copied verbatim from the matching place's \"image\" in the top-level \"activities\" array (which itself must be copied verbatim from the Activities tool's actual result).\n- If no real image URL exists from a tool for any item, set \"image\" to \"\" (empty string). An empty image is always correct; a fabricated one is always a violation.\n- Before finalizing output, scan every image field you are about to output and verify each one was copied character-for-character from a tool result. If you cannot trace a URL back to a specific tool call, delete it and use \"\".\n\nYour goal: search real data across all four categories, assemble an accurate and budget-conscious day-by-day itinerary, and populate the connected output schema completely.\n\n\nYou are a travel planning expert.\n\nYour job is to return ONLY valid JSON.\n\nDo not return Markdown.\nDo not use tables.\nDo not use bullet points.\nDo not wrap the JSON inside ```json.\n\nThe response MUST match the attached JSON Schema exactly.\n\nEvery field must be populated.\n\nIf information is unavailable,\nreturn \"\" for strings,\n0 for numbers,\n[] for arrays.\n\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1696,
+        48
+      ],
+      "id": "8fb41307-7a94-4b3f-8f6c-3f631bf7b1c7",
+      "name": "Planner Agent",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "operation": "google_flights",
+        "departure_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Departure_airport_code___location_kgmid__departure_id_', `departure_id must not be empty `, 'string') }}",
+        "arrival_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Arrival_airport_code___location_kgmid__arrival_id_', `arrival_id must not be empty`, 'string') }}",
+        "outbound_date": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Outbound_Date__outbound_date_', `The date of departure . Must not be in the past`, 'string') }}",
+        "return_date": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_Date__return_date_', `The date of return. Must not be in the past and must be greater than the outbound_date.`, 'string') }}",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-serpapi.serpApiTool",
+      "typeVersion": 1,
+      "position": [
+        -1808,
+        544
+      ],
+      "id": "7615f66a-bb9b-4533-8f0b-63749341f735",
+      "name": "Flights",
+      "credentials": {
+        "serpApi": {
+          "id": "d6gdUpheHuwUGHdM",
+          "name": "SerpApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "google_hotels",
+        "q": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Search_Query__q_', ``, 'string') }}",
+        "check_in_date": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Check-in_Date__check_in_date_', ``, 'string') }}",
+        "check_out_date": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Check-out_Date__check_out_date_', ``, 'string') }}",
+        "additionalFields": {
+          "adults": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Number_of_Adults__adults_', `Number of adults travellers . Must be greater than or equal to 1`, 'string') }}",
+          "sort_by": "8"
+        },
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-serpapi.serpApiTool",
+      "typeVersion": 1,
+      "position": [
+        -1632,
+        480
+      ],
+      "id": "0b57c47c-57bc-42be-8900-96ded8f91c6f",
+      "name": "Accomodations",
+      "credentials": {
+        "serpApi": {
+          "id": "d6gdUpheHuwUGHdM",
+          "name": "SerpApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Makes an HTTP request and returns the response data for hotel details",
+        "url": "https://serpapi.com/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `The destination city name to search for hotels (e.g. the trip destination from the form).`, 'string') }}"
+            },
+            {
+              "name": "property_token",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `The property_token value returned in each hotel result from the \"Accommodations\" tool. Must be obtained by calling Accommodations first.`, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        -1344,
+        544
+      ],
+      "id": "e362f36c-0f2f-4c0e-a2fe-c7ed60d69a37",
+      "name": "Accommodation Details",
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "SJz7jh5KYHBf7bVh",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "query": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Query', ``, 'string') }}",
+        "options": {
+          "search_depth": "advanced",
+          "max_results": 5,
+          "include_images": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Include_Images', ``, 'boolean') }}"
+        }
+      },
+      "type": "@tavily/n8n-nodes-tavily.tavilyTool",
+      "typeVersion": 1,
+      "position": [
+        -1504,
+        480
+      ],
+      "id": "a54db35b-11ac-4240-b0cd-99ec35321153",
+      "name": "Activities",
+      "credentials": {
+        "tavilyApi": {
+          "id": "TgEI55SdYL6LPepH",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "==Trip name: {{ $json.trip_name }}\nDay count: {{ $json.day_count }}\nWrite only a short, warm greeting/intro paragraph (2-4 sentences) referencing the destination, dates, and travel group. Do not write flight, hotel, or itinerary details — those are handled separately.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=# ROLE\n\nYou are an expert email marketing specialist and travel communication designer with expertise in creating visually appealing, responsive HTML emails that effectively present travel information in an engaging, user-friendly format. Your skills encompass modern email design principles, responsive layouts, and clear information hierarchy to enhance the travel planning experience.\n\n# TASK\n\nTransform the structured travel plan JSON into a compelling, professionally designed HTML email that presents all travel recommendations in an organised, visually appealing format, creates an engaging subject line that captures the essence of the travel plan, and ensures the email is fully responsive and compatible across email platforms whilst maintaining excellent user experience.\n\n# INPUT\n\nComplete travel plan JSON containing curated flight recommendations, activity suggestions, accommodation options, and request summary from the travel planning agent. Input includes structured data with all travel details, pricing, timing, and visual content that needs to be transformed into an engaging email format.\n\n---\n\n# OUTPUT\n\nProfessional JSON response containing a compelling email subject line and fully responsive HTML email content that presents the travel plan in an organised, visually appealing format optimised for both desktop and mobile viewing. Email must include all travel recommendations with clear formatting, pricing, and booking information. Then, you will write a summary of the email content.\n\n---\n\n# CAPABILITIES & REMINDERS\n\n## Email Design Standards:\n\n* **Responsive HTML structure using table-based layouts for email client compatibility.**\n* **Inline CSS styling with media queries for mobile responsiveness.**\n* **Professional typography with web-safe fonts and appropriate sizing.**\n* **Consistent colour scheme and branding elements throughout the email.**\n* **Clear section divisions for flights, activities, and accommodations.**\n\n## Content Organisation:\n\n* **Compelling email subject line that reflects destination and travel dates.**\n* **Personalised greeting and introduction referencing the original request.**\n* **Structured presentation of flight options with key details and pricing.**\n* **Organised activity recommendations with descriptions,timings and cost**\n\n## Rendering Rules (mandatory)\n\n* Render the ENTIRE day-by-day itinerary directly in the HTML body, day by day, using the \"itinerary\" array. Never insert placeholder text like \"click here to see full itinerary\" or any link that doesn't lead anywhere — there is no external itinerary page, so the full itinerary must be written out inline in the email itself.\n* For every flight, accommodation, and activity/itinerary item that has a non-empty \"image\" or \"image_url\" field, include it as an <img> tag (max-width: 100%; border-radius: 8px) directly above or beside its details. Do not omit available images.\n* For every flight and accommodation that has a non-empty \"booking_url\", render it as a clickable button-style <a href=\"...\"> (e.g. \"View Flight\" / \"View Hotel\"). If booking_url is empty, omit the button — do not render a dead link.\n* Render all 3 flight options and all accommodation options provided, not just one.\n\n## Completeness (mandatory)\nThe \"itinerary\" array may contain many days. You MUST render every single day from the first to the last — never stop after day 1. Before finishing, count the days in the input JSON and verify your HTML contains the same number of day sections. Do not summarize or truncate days for length.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -672,
+        48
+      ],
+      "id": "08b63ccc-5a8f-4c9e-b9c3-41f3d25a4756",
+      "name": "Email Agent"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"required\": [\"subject\", \"greeting\"],\n  \"properties\": {\n    \"subject\": { \"type\": \"string\", \"maxLength\": 100 },\n    \"greeting\": { \"type\": \"string\" },\n    \"summary\": { \"type\": \"string\" }\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -480,
+        304
+      ],
+      "id": "63c132d2-6a1d-4472-bd22-24ce0056bebc",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "sendTo": "kothariharsh2006@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.content }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        80
+      ],
+      "id": "7fa0bfd3-770a-4d18-bb5f-6debddbcbdfd",
+      "name": "Send a message",
+      "webhookId": "813a24fd-7dfc-4cb1-a68b-39c7e5ce7aba",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qwPNp6c9ONKpq9SV",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a5a3e40c-e00a-43d0-bc23-4eb35defb0b4",
+              "name": "output",
+              "value": "={{ $('Email Agent').item.json.output.summary }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        384,
+        128
+      ],
+      "id": "81d2dfb4-11c7-4a81-ac57-4de798726b41",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -1072,
+        320
+      ],
+      "id": "26635859-5051-4903-b5fc-1df48024cdf4",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "LRI0L3qbZdJGbfhJ",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -1936,
+        416
+      ],
+      "id": "80b48b70-15ac-4b2a-a551-86af2a14adce",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "j7vYKBHKx9D2RSEO",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -688,
+        288
+      ],
+      "id": "df857b3d-af71-4898-8ca9-82be913ae2be",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "j7vYKBHKx9D2RSEO",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.output }}",
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n  \"type\": \"object\",\n  \"required\": [\"trip_name\", \"flights\", \"accommodations\", \"activities\", \"itinerary\", \"cost_summary\"],\n  \"properties\": {\n    \"trip_name\": { \"type\": \"string\" },\n    \"flights\": {\n      \"type\": \"array\",\n      \"maxItems\": 3,\n      \"items\": {\n        \"type\": \"object\",\n        \"required\": [\"airline\", \"flight_number\", \"departure_airport\", \"arrival_airport\", \"departure_time\", \"arrival_time\", \"price\", \"image\", \"booking_url\"],\n        \"properties\": {\n          \"airline\": { \"type\": \"string\" },\n          \"flight_number\": { \"type\": \"string\" },\n          \"departure_airport\": { \"type\": \"string\" },\n          \"arrival_airport\": { \"type\": \"string\" },\n          \"departure_time\": { \"type\": \"string\" },\n          \"arrival_time\": { \"type\": \"string\" },\n          \"price\": { \"type\": \"number\" },\n          \"image\": { \"type\": \"string\" },\n          \"booking_url\": { \"type\": \"string\", \"description\": \"Direct link to this flight from the tool result. If the tool returns no direct link, use a Google Flights search URL built from departure_airport, arrival_airport, and departure_time. Never leave blank.\" }\n        }\n      }\n    },\n    \"accommodations\": {\n      \"type\": \"array\",\n      \"maxItems\": 3,\n      \"items\": {\n        \"type\": \"object\",\n        \"required\": [\"name\", \"address\", \"price_per_night\", \"total_price\", \"image\", \"booking_url\"],\n        \"properties\": {\n          \"name\": { \"type\": \"string\" },\n          \"address\": { \"type\": \"string\" },\n          \"price_per_night\": { \"type\": \"number\" },\n          \"total_price\": { \"type\": \"number\" },\n          \"image\": { \"type\": \"string\" },\n          \"booking_url\": { \"type\": \"string\", \"description\": \"Direct link from Accommodation Details tool result. Empty string only if truly unavailable.\" }\n        }\n      }\n    },\n    \"activities\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"required\": [\"name\", \"description\", \"image\"],\n        \"properties\": {\n          \"name\": { \"type\": \"string\" },\n          \"description\": { \"type\": \"string\" },\n          \"image\": { \"type\": \"string\" }\n        }\n      }\n    },\n    \"itinerary\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"required\": [\"day\", \"date\", \"activities\"],\n        \"properties\": {\n          \"day\": { \"type\": \"number\" },\n          \"date\": { \"type\": \"string\" },\n          \"activities\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"object\",\n              \"required\": [\"title\", \"image\"],\n              \"properties\": {\n                \"title\": { \"type\": \"string\" },\n                \"image\": { \"type\": \"string\" }\n              }\n            }\n          }\n        }\n      }\n    },\n    \"cost_summary\": {\n      \"type\": \"object\",\n      \"required\": [\"flights_total\", \"accommodation_total\", \"activities_total\", \"food_total\", \"grand_total\"],\n      \"properties\": {\n        \"flights_total\": { \"type\": \"number\" },\n        \"accommodation_total\": { \"type\": \"number\" },\n        \"activities_total\": { \"type\": \"number\" },\n        \"food_total\": { \"type\": \"number\" },\n        \"grand_total\": { \"type\": \"number\" }\n      }\n    }\n  }\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        -1216,
+        32
+      ],
+      "id": "75ebcce9-1a25-4b7c-bb03-684cc25410a8",
+      "name": "Information Extractor"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $json.output ? $json.output : $json;\n\nconst esc = (s) => (s === undefined || s === null) ? \"\" : String(s);\nconst money = (n) => \"₹\" + Number(n || 0).toLocaleString(\"en-IN\");\nconst img = (url, alt) => url\n  ? `<img src=\"${esc(url)}\" alt=\"${esc(alt)}\" style=\"width:100%;max-width:500px;height:200px;object-fit:cover;border-radius:10px;display:block;margin-bottom:10px;\" />`\n  : \"\";\nconst btn = (url, label) => url\n  ? `<a href=\"${esc(url)}\" style=\"display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:6px;font-size:14px;font-weight:600;margin-top:8px;\">${label}</a>`\n  : \"\";\n\n// ---------- FLIGHTS ----------\nconst flights = Array.isArray(data.flights) ? data.flights : [];\nconst flightsHtml = flights.map(f => `\n  <table role=\"presentation\" width=\"100%\" style=\"background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:16px;padding:16px;\">\n    <tr><td>\n      ${img(f.image, f.airline)}\n      <div style=\"font-size:16px;font-weight:700;color:#111827;\">${esc(f.airline)} · ${esc(f.flight_number)}</div>\n      <div style=\"font-size:14px;color:#4b5563;margin:6px 0;\">\n        ${esc(f.departure_airport)} ${esc(f.departure_time)} &rarr; ${esc(f.arrival_airport)} ${esc(f.arrival_time)}\n      </div>\n      <div style=\"font-size:18px;font-weight:700;color:#0f766e;\">${money(f.price)}</div>\n      ${btn(f.booking_url, \"View Flight\")}\n    </td></tr>\n  </table>\n`).join(\"\");\n\n// ---------- ACCOMMODATIONS ----------\nconst accommodations = Array.isArray(data.accommodations) ? data.accommodations : (data.accommodation ? [data.accommodation] : []);\nconst accommodationsHtml = accommodations.map(a => `\n  <table role=\"presentation\" width=\"100%\" style=\"background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:16px;padding:16px;\">\n    <tr><td>\n      ${img(a.image, a.name)}\n      <div style=\"font-size:16px;font-weight:700;color:#111827;\">${esc(a.name)}</div>\n      <div style=\"font-size:13px;color:#6b7280;margin:4px 0;\">${esc(a.address)}</div>\n      <div style=\"font-size:14px;color:#4b5563;\">${money(a.price_per_night)} / night &middot; Total: ${money(a.total_price)}</div>\n      ${btn(a.booking_url, \"View Hotel\")}\n    </td></tr>\n  </table>\n`).join(\"\");\n\n// ---------- FULL DAY-BY-DAY ITINERARY (every day, guaranteed) ----------\nconst itinerary = Array.isArray(data.itinerary) ? data.itinerary : [];\nconst itineraryHtml = itinerary.map(day => {\n  const acts = Array.isArray(day.activities) ? day.activities : [];\n  const actsHtml = acts.map(a => `\n    <div style=\"margin-bottom:14px;\">\n      ${img(a.image, a.title)}\n      <div style=\"font-size:14px;color:#111827;font-weight:600;\">${esc(a.title)}</div>\n    </div>\n  `).join(\"\");\n  return `\n    <table role=\"presentation\" width=\"100%\" style=\"background:#f9fafb;border-radius:10px;margin-bottom:18px;padding:16px;\">\n      <tr><td>\n        <div style=\"font-size:16px;font-weight:700;color:#0f766e;margin-bottom:10px;\">\n          Day ${esc(day.day)} &middot; ${esc(day.date)}\n        </div>\n        ${actsHtml || '<div style=\"color:#9ca3af;font-size:13px;\">No activities planned</div>'}\n      </td></tr>\n    </table>\n  `;\n}).join(\"\");\n\n// ---------- ACTIVITIES REFERENCE GALLERY (optional extra section) ----------\nconst activities = Array.isArray(data.activities) ? data.activities : [];\nconst activitiesHtml = activities.map(a => `\n  <table role=\"presentation\" width=\"48%\" style=\"display:inline-block;vertical-align:top;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;margin:1%;padding:12px;\">\n    <tr><td>\n      ${img(a.image, a.name)}\n      <div style=\"font-size:14px;font-weight:700;color:#111827;\">${esc(a.name)}</div>\n      <div style=\"font-size:12px;color:#6b7280;margin-top:4px;\">${esc(a.description)}</div>\n    </td></tr>\n  </table>\n`).join(\"\");\n\n// ---------- COST SUMMARY ----------\nconst cs = data.cost_summary || {};\nconst costHtml = `\n  <table role=\"presentation\" width=\"100%\" style=\"background:#111827;color:#ffffff;border-radius:10px;padding:16px;margin-bottom:16px;\">\n    <tr><td style=\"font-size:14px;padding:4px 0;\">Flights</td><td align=\"right\">${money(cs.flights_total)}</td></tr>\n    <tr><td style=\"font-size:14px;padding:4px 0;\">Accommodation</td><td align=\"right\">${money(cs.accommodation_total)}</td></tr>\n    <tr><td style=\"font-size:14px;padding:4px 0;\">Activities</td><td align=\"right\">${money(cs.activities_total)}</td></tr>\n    <tr><td style=\"font-size:14px;padding:4px 0;\">Food</td><td align=\"right\">${money(cs.food_total)}</td></tr>\n    <tr><td style=\"font-size:16px;font-weight:700;padding-top:10px;border-top:1px solid #374151;\">Grand Total</td>\n        <td align=\"right\" style=\"font-size:16px;font-weight:700;padding-top:10px;border-top:1px solid #374151;\">${money(cs.grand_total)}</td></tr>\n  </table>\n`;\n\nreturn [{\n  json: {\n    ...data,\n    html_flights: flightsHtml,\n    html_accommodations: accommodationsHtml,\n    html_itinerary: itineraryHtml,\n    html_activities_gallery: activitiesHtml,\n    html_cost_summary: costHtml,\n    day_count: itinerary.length\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -864,
+        32
+      ],
+      "id": "2b9bb322-6455-49ff-9e19-ad69f43ebde8",
+      "name": "Build Email HTML Blocks"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "592cfac9-3b92-4737-894d-ecadbd6cf28c",
+              "name": "subject",
+              "value": "=={{ $json.output.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "a21c214f-90d5-44f1-a26b-9b7d6dbc8547",
+              "name": "content",
+              "value": "=={{ `<div style=\"font-family:Arial,Helvetica,sans-serif;max-width:640px;margin:0 auto;padding:20px;background:#f3f4f6;\">  <h1 style=\"color:#111827;\">${$('Build Email HTML Blocks').item.json.trip_name || ''}</h1>  <p style=\"font-size:15px;color:#374151;\">${$json.output.greeting || ''}</p>  <h2 style=\"color:#0f766e;border-bottom:2px solid #0f766e;padding-bottom:6px;\">Flights</h2>  ${$('Build Email HTML Blocks').item.json.html_flights || ''}  <h2 style=\"color:#0f766e;border-bottom:2px solid #0f766e;padding-bottom:6px;\">Accommodation</h2>  ${$('Build Email HTML Blocks').item.json.html_accommodations || ''}  <h2 style=\"color:#0f766e;border-bottom:2px solid #0f766e;padding-bottom:6px;\">Day-by-Day Itinerary</h2>  ${$('Build Email HTML Blocks').item.json.html_itinerary || ''}  <h2 style=\"color:#0f766e;border-bottom:2px solid #0f766e;padding-bottom:6px;\">Places You'll Visit</h2>  ${$('Build Email HTML Blocks').item.json.html_activities_gallery || ''}  <h2 style=\"color:#0f766e;border-bottom:2px solid #0f766e;padding-bottom:6px;\">Cost Summary</h2>  ${$('Build Email HTML Blocks').item.json.html_cost_summary || ''}</div>` }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        48
+      ],
+      "id": "7d8b8dbf-8303-4a39-97b3-cc46c4c22826",
+      "name": "Assemble Final Email"
+    }
+  ],
+  "pinData": {
+    "On form submission": [
+      {
+        "json": {
+          "Departure City ": "Delhi",
+          "Destination": "New York",
+          "Start date": "2026-07-24",
+          "End date": "2026-08-18",
+          "Number of travelers": 2,
+          "Accommodation preference": "Hotel ",
+          "Budget": 200000,
+          "Dietry preference ": "No Restriction",
+          "Travel group type ": "Couple ",
+          "submittedAt": "2026-07-16T00:22:29.437-04:00",
+          "formMode": "test"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Planner Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planner Agent": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flights": {
+      "ai_tool": [
+        [
+          {
+            "node": "Planner Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Accomodations": {
+      "ai_tool": [
+        [
+          {
+            "node": "Planner Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Accommodation Details": {
+      "ai_tool": [
+        [
+          {
+            "node": "Planner Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Activities": {
+      "ai_tool": [
+        [
+          {
+            "node": "Planner Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Agent": {
+      "main": [
+        [
+          {
+            "node": "Assemble Final Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Email Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Planner Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Email Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "Build Email HTML Blocks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Email HTML Blocks": {
+      "main": [
+        [
+          {
+            "node": "Email Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble Final Email": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "25c78a5b-7e06-4288-80c1-850d3c03930c",
+  "meta": {
+    "instanceId": "9329e00643eff3738d8c0902f52da7407ea40df3a41992631395b3f16cf8ff74"
+  },
+  "nodeGroups": [],
+  "id": "qpqXVMBkzL7vazba",
+  "tags": []
+}
