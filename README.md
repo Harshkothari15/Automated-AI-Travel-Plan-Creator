@@ -20,6 +20,11 @@ An AI-powered, multi-agent trip planning workflow built with **n8n**. A user fil
 - 🍽️ **Dietary & group-aware recommendations** — respects dietary restrictions and adjusts suggestions for solo/couple/family/friends travel
 - 📧 **Automated HTML email delivery** — a second AI agent (Email Agent) writes a personalized subject line and intro, and a code node assembles a fully responsive HTML email (flights, hotels, day-by-day itinerary, activity gallery, and cost summary) sent automatically via Gmail
 
+🖼️ Workflow canvas
+
+<img width="958" height="443" alt="Screenshot 2026-07-16 104552" src="https://github.com/user-attachments/assets/3f5a112a-3ef3-45ca-8ffd-608785fb14ef" />
+
+
 ## 🧠 How it works
 
 ```mermaid
